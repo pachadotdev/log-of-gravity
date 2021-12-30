@@ -1,0 +1,251 @@
+---
+title: 'A Replication (and Tribute) of The Log of Gravity'
+author: 'Mauricio "Pacha" Vargas Sepulveda'
+university: 'University of Toronto'
+department: 'Department of Statistical Sciences'
+output:
+  rmarkdown::pdf_document:
+    latex_engine: pdflatex
+    template: tex/template.tex
+    # Supported styles include "default", "tango", "pygments", "kate", 
+    # "monochrome", "espresso", "zenburn", "haddock". Delete the highlighting 
+    # line NULL to turn off highlighting.
+    highlight: tango
+    keep_tex: yes
+bibliography: bib/references.bib
+fontsize: 10pt
+linespacing: 1.0
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRUE)
+```
+
+# Introduction
+
+## Goal
+
+@silva2006log wasn't just an influential article, it defined my interest
+in gravity models to the point I wrote a master's thesis on it for UN ESCAP.
+Here I replicate the main results from the original article in R. The original
+results were obtained in Stata back in 2006. The idea here is to be explicit 
+regarding the conceptual approach to regression in R. For most of the 
+replication I used base R [@core2021base] without external libraries 
+(i.e packages) except when it was absolutely necessary. Much of the methods 
+exposed here lead to the exact same results as using the gravity package 
+[@woelwer2020gravity] which provides convenient wrappers for gravity 
+estimation.
+
+All questions are welcome to the address `mv.sepulveda@mail.utoronto.ca`.
+
+## Usual disclaimer
+
+The views and opinions expressed in this course are solely those
+of the author and do not necessarily reflect the official position
+of any unit of the United Nations, the University of Toronto or the
+Pontifical Catholic University of Chile.
+
+# Obtaining the original codes and data
+
+I shall organize the original codes and data from the authors' site to put
+these on GitHub and therefore ease reproducibility in case of broken links
+or anything that makes it difficult to obtain the original zip file with
+the data and codes.
+
+```{r download}
+url <- "https://personal.lse.ac.uk/tenreyro/regressors.zip"
+zip <- gsub(".*/", "", url)
+if (!file.exists(zip)) try(download.file(url, zip))
+
+dout <- "regressors"
+if (!dir.exists(dout)) unzip(zip, exdir = dout)
+```
+
+# Loading the original data
+
+Thanks to the haven package [@wickham2021haven] we can read Stata datasets 
+directly in R without loss of information about column types and other common 
+problems when reading proprietary formats.
+
+```{r import}
+log_of_gravity <- haven::read_dta(paste0(dout, "/Log of Gravity.dta"))
+```
+
+```{r import2, echo=FALSE}
+log_of_gravity
+```
+
+<!-- In addition, the article provides useful metadata that we can read with -->
+<!-- the readxl package [@wickham2019readxl] with the same advantages as for the  -->
+<!-- Stata specific R package. -->
+
+<!-- ```{r import3} -->
+<!-- coding <- readxl::read_excel("regressors/coding.xls", range = "A2:C19") -->
+<!-- countrycodes <- readxl::read_excel("regressors/countrycodes.xls",  -->
+<!--                                    range = "A1:D137") -->
+<!-- ``` -->
+
+<!-- ```{r import4, echo=FALSE} -->
+<!-- coding -->
+<!-- countrycodes -->
+<!-- ``` -->
+
+# Replication attempt
+
+## Poisson Pseudo Maximum Likelihood
+
+Table 3 in @silva2006log summarises a large portion of the article and it can be
+partially replicated with the following Stata code for the Poisson Pseudo 
+Maximum Likelihood.
+
+```stata
+ppml trade lypex lypim lyex lyim ldist border comlang colony landl_ex landl_im 
+ lremot_ex lremot_im comfrt_wto open_wto
+```
+
+In R we would replicate it by fitting two Generalized Linear Models since the
+article introduces estimates with and without removing zero flows.
+
+```{r replication}
+ppml_formula <- trade ~ lypex + lypim + lyex + lyim + ldist + border + comlang + 
+  colony + landl_ex + landl_im + lremot_ex + lremot_im + comfrt_wto + open_wto
+
+fit_ppml_1 <- glm(
+  ppml_formula,
+  data = log_of_gravity,
+  subset = trade > 0,
+  family = quasipoisson()
+)
+
+fit_ppml_2 <- glm(
+  ppml_formula,
+  data = log_of_gravity,
+  family = quasipoisson()
+)
+
+coef(fit_ppml_1)
+coef(fit_ppml_2)
+```
+
+The replication effort here is null, it just sufficed to look at the summary
+table in the article and subset the data to drop zero flows. Therefore, it
+makes sense to proceed with the other models.
+
+## Ordinary Least Squares
+
+The only consideration here is to drop zero flows for some of the models with 
+log in the dependent variable even when Table 3 is not explicit about this, 
+otherwise we break the fitting algorithm.
+
+For example, for estimations of the type 
+$\log(\text{trade}) = \beta_0 + \beta_1 \text{lypex} + \dots + \varepsilon,$
+we need to drop zero flows to replicate the result. On the other hand, 
+for estimations of the type 
+$\log(1 + \text{trade}) = \beta_0 + \beta_1 \text{lypex} + \dots + \varepsilon,$
+we don't need to drop zero flows.
+
+```{r replication2}
+fit_ols_1 <- lm(
+  update.formula(ppml_formula, log(.) ~ .),
+  data = log_of_gravity,
+  subset = trade > 0
+)
+
+fit_ols_2 <- lm(
+  update.formula(ppml_formula, log(1 + .) ~ .),
+  data = log_of_gravity
+)
+```
+
+## Tobit
+
+The Tobit estimation is similar but requires the use of the censReg package
+[@henningsen2020censreg]. The complicated part of the estimation here is to 
+extract the right hand side of the model formula to define a vector of zeroes 
+of the length of this right hand side plus two as starting point for the 
+Maximum Likelihood estimation (i.e including the depending variable and 
+intercept besides the estimating slopes).
+
+In order to obtain the $a$ value that matches the results in the article I
+proceeded with an iteration loop until achieving convergence with respect to
+one of the estimated slopes. The initial value of $a=200$ was arbitrary and
+set after trying reasonable guesses that converge to the slopes in the original
+article after 9 iterations for a final value of $a=159$.
+
+```{r replication3}
+a <- 200
+lypex_ref <- 1.058
+tol <- 0.001
+lypex_estimate <- 2 * lypex_ref
+iter <- 0
+
+while (abs(lypex_estimate - lypex_ref) > tol) {
+  log_of_gravity$log_trade_cens <- log(a + log_of_gravity$trade)
+  log_trade_cens_min <- min(log_of_gravity$log_trade_cens, na.rm = TRUE)
+    
+  fit_tobit <- censReg::censReg(
+    formula = update.formula(ppml_formula, log_trade_cens ~ .),
+    left = log_trade_cens_min,
+    right = Inf,
+    data = log_of_gravity,
+    start = rep(0, 2 + length(attr(terms(ppml_formula), "term.labels"))),
+    method = "BHHH"
+  )
+  
+  lypex_estimate <- coef(fit_tobit)[2]
+  if (abs(lypex_estimate - lypex_ref) > 2 * tol) {
+    a <- a - 5
+  } else {
+    a <- a - 1
+  }
+  iter <- iter + 1
+}
+```
+
+## Non-Linear Least Squares
+
+For this type of estimation the starting values are retrieved from the results 
+of the PPML model with zero flows and then pass these values to a Generalized 
+Linear Model using the Gaussian distribution and a log-link.
+
+```{r replication4}
+fit_ppml_eta <- fit_ppml_2$linear.predictors
+fit_ppml_mu <- fit_ppml_2$fitted.values
+fit_ppml_start <- fit_ppml_2$coefficients
+
+fit_nls <- glm(
+  ppml_formula,
+  data = log_of_gravity, 
+  family = gaussian(link = "log"),
+  etastart = fit_ppml_eta,
+  mustart = fit_ppml_mu,
+  start = fit_ppml_start,
+  control = list(maxit = 200, trace = FALSE)
+)
+```
+
+# Replication results
+
+There wasn't much effort involved in the replication, which is something
+desirable. I didn't even have to email the authors with questions whereas
+the data was filtered or transformed in ways not mentioned in the article, 
+which is something that we often see. Unlike many articles, this is one of the
+very few articles that I've found which passes the reproducibility review
+and is very close to full replication according to the criteria from 
+@peng2011reproducible.
+
+```{r replication5, echo=FALSE, results='asis'}
+stargazer::stargazer(
+  fit_ols_1, fit_ols_2, fit_tobit, fit_nls, fit_ppml_1, fit_ppml_2,
+  header = FALSE, font.size = "footnotesize", model.names = F, 
+  omit.table.layout = "d", omit.stat = c("f","ser","ll","aic","bic","rsq","adj.rsq"),
+  title = "Replication results for OLS (1-2), Tobit (3), NLS (4) and PPML (5-6)."
+)
+```
+
+\newpage
+
+# References
+
+\markboth{References}{References}
