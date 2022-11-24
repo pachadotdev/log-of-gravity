@@ -1,20 +1,22 @@
 ---
 title: 'A Replication (and Tribute) of The Log of Gravity'
-author: 'Mauricio "Pacha" Vargas Sepulveda'
+author: 'Mauricio "Pachá" Vargas Sepúlveda'
 university: 'University of Toronto'
-department: 'Department of Statistical Sciences'
+department: 'Department of Political Science'
 output:
   rmarkdown::pdf_document:
+    highlight: tango # "default", "tango", "pygments", "kate", "monochrome", "espresso", "zenburn", "haddock"
+    template: "tex/template.tex"
     latex_engine: pdflatex
-    template: tex/template.tex
-    # Supported styles include "default", "tango", "pygments", "kate", 
-    # "monochrome", "espresso", "zenburn", "haddock". Delete the highlighting 
-    # line NULL to turn off highlighting.
-    highlight: tango
-    keep_tex: yes
 bibliography: bib/references.bib
-fontsize: 10pt
-linespacing: 1.0
+csl: csl/chicago.csl # Download your specific csl file and refer to it in the line below (see https://www.zotero.org/styles/)
+fontsize: 12pt
+linespacing: 1.5
+margin: 1in
+paper: letterpaper # a4paper, executivepaper, legalpaper, etc also works
+amsmath: true
+sansserif: false
+creativecommons: by-nc-sa
 ---
 
 ```{r setup, include=FALSE}
@@ -29,10 +31,14 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRU
 @silva2006log wasn't just an influential article, it defined my interest
 in gravity models to the point I wrote a master's thesis on it for UN ESCAP.
 Here I replicate the main results from the original article in R. The original
-results were obtained in Stata back in 2006. The idea here is to be explicit 
+results were obtained in Stata back in 2006. 
+
+The idea here is to be explicit 
 regarding the conceptual approach to regression in R. For most of the 
 replication I used base R [@core2021base] without external libraries 
-(i.e packages) except when it was absolutely necessary. Much of the methods 
+(i.e packages) except when it was absolutely necessary. 
+
+Much of the methods 
 exposed here lead to the exact same results as using the gravity package 
 [@woelwer2020gravity] which provides convenient wrappers for gravity 
 estimation.
@@ -72,9 +78,9 @@ problems when reading proprietary formats.
 log_of_gravity <- haven::read_dta(paste0(dout, "/Log of Gravity.dta"))
 ```
 
-```{r import2, echo=FALSE}
-log_of_gravity
-```
+<!-- ```{r import2, echo=FALSE} -->
+<!-- glimpse(log_of_gravity -->
+<!-- ``` -->
 
 <!-- In addition, the article provides useful metadata that we can read with -->
 <!-- the readxl package [@wickham2019readxl] with the same advantages as for the  -->
@@ -100,16 +106,17 @@ partially replicated with the following Stata code for the Poisson Pseudo
 Maximum Likelihood.
 
 ```stata
-ppml trade lypex lypim lyex lyim ldist border comlang colony landl_ex landl_im 
- lremot_ex lremot_im comfrt_wto open_wto
+ppml trade lypex lypim lyex lyim ldist border comlang colony landl_ex 
+ landl_im lremot_ex lremot_im comfrt_wto open_wto
 ```
 
 In R we would replicate it by fitting two Generalized Linear Models since the
 article introduces estimates with and without removing zero flows.
 
 ```{r replication}
-ppml_formula <- trade ~ lypex + lypim + lyex + lyim + ldist + border + comlang + 
-  colony + landl_ex + landl_im + lremot_ex + lremot_im + comfrt_wto + open_wto
+ppml_formula <- trade ~ lypex + lypim + lyex + lyim + ldist + border + 
+  comlang + colony + landl_ex + landl_im + lremot_ex + lremot_im + 
+  comfrt_wto + open_wto
 
 fit_ppml_1 <- glm(
   ppml_formula,
@@ -124,8 +131,8 @@ fit_ppml_2 <- glm(
   family = quasipoisson()
 )
 
-coef(fit_ppml_1)
-coef(fit_ppml_2)
+kable(broom::tidy(fit_ppml_1))
+kable(broom::tidy(fit_ppml_2))
 ```
 
 The replication effort here is null, it just sufficed to look at the summary
@@ -206,7 +213,7 @@ while (abs(lypex_estimate - lypex_ref) > tol) {
 ## Non-Linear Least Squares
 
 For this type of estimation the starting values are retrieved from the results 
-of the PPML model with zero flows and then pass these values to a Generalized 
+of the PPML model with zero flows and then we pass these values to a Generalized 
 Linear Model using the Gaussian distribution and a log-link.
 
 ```{r replication4}

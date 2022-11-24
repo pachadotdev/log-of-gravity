@@ -1,3 +1,4 @@
 *.log
 *.tex
 replication_cache
+.Rproj.user
