@@ -1,4 +1,4 @@
-# A Replication (and Tribute) of The Log of Gravity
+# A Replication of The Log of Gravity
 
 Silva and Tenreyro wasn’t just an influential article, it defined my interest in gravity models to the point I wrote a master’s thesis on it for UN ESCAP. Here I replicate the main results from the original article in R.
 
