@@ -28,7 +28,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRU
 
 # About
 
-Here I replicate the main results from @@silva2006log in R. The original
+Here I replicate the main results from @silva2006log in R. The original
 results were obtained in Stata back in 2006. 
 
 The idea here is to be explicit  regarding the conceptual approach to regression
@@ -55,6 +55,14 @@ dout <- "regressors"
 if (!dir.exists(dout)) unzip(zip, exdir = dout)
 ```
 
+# R packages
+
+```{r pkgs}
+library(haven) # read Stata datasets
+library(censReg) # Tobit estimation
+library(stargazer) # table of results
+```
+
 # Loading the original data
 
 Thanks to the haven package [@wickham2021haven] we can read Stata datasets 
@@ -62,22 +70,14 @@ directly in R without loss of information about column types and other common
 problems when reading proprietary formats.
 
 ```{r import}
-log_of_gravity <- haven::read_dta(paste0(dout, "/Log of Gravity.dta"))
+log_of_gravity <- read_dta(paste0(dout, "/Log of Gravity.dta"))
 ```
 
 # Poisson Pseudo Maximum Likelihood
 
-Table 3 in @silva2006log summarises a large portion of the article and it can be
-partially replicated with the following Stata code for the Poisson Pseudo 
-Maximum Likelihood.
-
-```stata
-ppml trade lypex lypim lyex lyim ldist border comlang colony landl_ex 
- landl_im lremot_ex lremot_im comfrt_wto open_wto
-```
-
-In R we would replicate it by fitting two Generalized Linear Models since the
-article introduces estimates with and without removing zero flows.
+Table 3 in @silva2006log summarises a large portion of the article. In R we 
+would replicate it by fitting two Generalized Linear Models since the article
+introduces estimates with and without removing zero flows.
 
 ```{r replication}
 ppml_formula <- trade ~ lypex + lypim + lyex + lyim + ldist + border +
@@ -96,9 +96,6 @@ fit_ppml_2 <- glm(
   data = log_of_gravity,
   family = quasipoisson()
 )
-
-kable(broom::tidy(fit_ppml_1))
-kable(broom::tidy(fit_ppml_2))
 ```
 
 The replication effort here is null, it just sufficed to look at the summary
@@ -157,7 +154,7 @@ while (abs(lypex_estimate - lypex_ref) > tol) {
   log_of_gravity$log_trade_cens <- log(a + log_of_gravity$trade)
   log_trade_cens_min <- min(log_of_gravity$log_trade_cens, na.rm = TRUE)
 
-  fit_tobit <- censReg::censReg(
+  fit_tobit <- censReg(
     formula = update.formula(ppml_formula, log_trade_cens ~ .),
     left = log_trade_cens_min,
     right = Inf,
@@ -207,7 +204,7 @@ which is something that we often see. The article is very close to full
 replication according to the criteria from @peng2011reproducible.
 
 ```{r replication5, results='asis'}
-stargazer::stargazer(
+stargazer(
   fit_ols_1, fit_ols_2, fit_tobit, fit_nls, fit_ppml_1, fit_ppml_2,
   header = FALSE, font.size = "footnotesize", model.names = F,
   omit.table.layout = "d", omit.stat = c(
