@@ -8,7 +8,7 @@ format:
     pdf-engine: pdflatex # xelatex and other also work
     highlight: tango # "default", "tango", "pygments", "kate", "monochrome", "espresso", "zenburn", "haddock"
     template: "tex/template.tex"
-    keep-tex: false
+    keep-tex: true
 bibliography: bib/references.bib
 csl: csl/chicago_manual_of_style_17th_edition_author_date.csl # Download your specific csl file and refer to it in the line below (see https://www.zotero.org/styles/)
 fontsize: 12pt
@@ -29,7 +29,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRU
 # About
 
 Here I replicate the main results from @silva2006log in R. The original
-results were obtained in Stata back in 2006. 
+results were obtained in [TSP](https://en.wikipedia.org/wiki/TSP_(econometrics_software))
+back in 2006.
 
 The idea here is to be explicit  regarding the conceptual approach to regression
 in R. For most of the  replication I used base R [@core2021base] without
@@ -131,10 +132,10 @@ fit_ols_2 <- lm(
 # Tobit
 
 The Tobit estimation is similar but requires the use of the censReg package
-[@henningsen2020censreg]. The complicated part of the estimation here is to 
+[@henningsen2020censreg]. The complicated part of the estimation is to 
 extract the right hand side of the model formula to define a vector of zeroes 
-of the length of this right hand side plus two as starting point for the 
-Maximum Likelihood estimation (i.e including the depending variable and 
+with a length equal to the right hand side plus two as starting point for the 
+Maximum Likelihood estimation (e.g., including the depending variable and 
 intercept besides the estimating slopes).
 
 In order to obtain the $a$ value that matches the results in the article I
@@ -216,5 +217,10 @@ stargazer(
 ```
 
 \newpage
+
+# Acknowledgements
+
+Thanks to Joao Santos Silva for pointing that out, in a previous version of this
+document I mentioned that the original results were obtained with Stata.
 
 # References
