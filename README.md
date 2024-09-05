@@ -1,6 +1,6 @@
 # A Replication of The Log of Gravity
 
-Silva and Tenreyro wasn’t just an influential article, it defined my interest in gravity models to the point I wrote a master’s thesis on it for UN ESCAP. Here I replicate the main results from the original article in R.
+Santos Silva and Tenreyro wasn’t just an influential article, it defined my interest in gravity models to the point I wrote a master’s thesis on it for UN ESCAP. Here I replicate the main results from the original article in R.
 
 Here I replicate the main results from @silva2006log in R. The original
 results were obtained in [TSP](https://en.wikipedia.org/wiki/TSP_(econometrics_software))
