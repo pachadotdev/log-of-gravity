@@ -1,23 +1,24 @@
 ---
 title: 'Replicating The Log of Gravity'
-author: 'Mauricio "Pachá" Vargas Sepúlveda'
-university: 'University of Toronto'
-department: 'Department of Political Science'
+author1: "Mauricio Vargas Sepúlveda (ORCID 0000-0003-1017-7574)"
+email1: m.sepulveda@mail.utoronto.ca
+affiliation11: Department of Political Science, University of Toronto
+affiliation12: Munk School of Global Affairs and Public Policy, University of Toronto
 format:
   pdf:
-    pdf-engine: pdflatex # xelatex and other also work
-    highlight: tango # "default", "tango", "pygments", "kate", "monochrome", "espresso", "zenburn", "haddock"
-    template: "tex/template.tex"
+    pdf-engine: pdflatex
+    template: "template.tex"
     keep-tex: true
-bibliography: bib/references.bib
-csl: csl/chicago_manual_of_style_17th_edition_author_date.csl # Download your specific csl file and refer to it in the line below (see https://www.zotero.org/styles/)
+    post-process: "move_pdf.sh"
+bibliography: references.bib
+csl: chicago.csl
 fontsize: 12pt
-linespacing: 1.0
+linespacing: 1.5
 margin: 1
-paper: letterpaper # a4paper, executivepaper, legalpaper, etc also works
-customfonts: true
+paper: letterpaper
+customfonts: false
 sansserif: false
-amsthm: true
+amsthm: false
 outline: true
 ---
 
@@ -26,26 +27,58 @@ library(knitr)
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRUE)
 ```
 
-# About
+# Abstract
 
-Here I replicate the main results from @silva2006log in R. The original
-results were obtained in [TSP](https://en.wikipedia.org/wiki/TSP_(econometrics_software))
-back in 2006.
+This document replicates the main results from @silva2006log in R. The original
+results were obtained in TSP back in 2006. The idea here is to be explicit
+regarding the conceptual approach to regression in R. For most of the
+replication I used base R without external libraries except when it was
+absolutely necessary. The findings are consistent with the original article and
+reveal that the replication effort is minimal, without the need to contact the
+authors for clarifications or incur into data transformations or filtering not
+mentioned in the article.
 
-The idea here is to be explicit  regarding the conceptual approach to regression
-in R. For most of the  replication I used base R [@core2021base] without
-external libraries (i.e packages) except when it was absolutely necessary.
+# Introduction
 
-Much of the methods exposed here lead to the exact same results as using the
-gravity package [@woelwer2020gravity] which provides convenient wrappers for
-gravity  estimation.
+@silva2006log used [TSP](https://en.wikipedia.org/wiki/TSP_(econometrics_software))
+back in 2006 to estimate different functional forms of the gravity model
+of trade. The article is a classic in the field of international trade and
+has been cited over 8,500 times according to Google Scholar. Its contribution,
+which was a new Poisson-based estimator to correct the bias in the Ordinary
+Least Squares (OLS) estimator under heteroskedasticity, has been widely used in
+the academic literature. Besides pure academic interests, the OLS estimator bias
+has implications for policy analysis, and posterior works with clear insights
+for International Relations academics and Public Policy practitioners, including
+@head_chapter_2014, @yotov_advanced_2016, and @felbermayr_global_2020.
 
-# Obtaining the original codes and data
+Outside of statistical concerns about biases, the field of International
+Relations has developed interesting critiques about leaving theory behind.
+@mearsheimer_leaving_2013 argues that the field has been dominated by
+quantitative studies that present simplistic hypothesis after incentives to
+present academic findings as more interesting for policymakers. From this
+critique, @silva2006log is relevant not only for its methodological contribution
+and presenting an estimator that can largely differ from OLS, but also for
+presenting an estimator that is consistent with micro-founded approaches to
+the gravity model of trade, including @eaton_technology_2001.
 
-I shall organize the original codes and data from the authors' site to put
-these on GitHub and therefore ease reproducibility in case of broken links
-or anything that makes it difficult to obtain the original zip file with
-the data and codes.
+The goal in this document is to be explicit regarding the conceptual approach to
+regression in R. For most of the replication we used base R [@core2021base] and
+relying on external libraries (e.g., R packages) when it was absolutely
+necessary based on the criteria that implementing methods such as the Tobit
+estimator from scratch would be time consuming and would deviate from the
+replication effort. The results are consistent with the gravity package
+[@woelwer2020gravity] which provides convenient wrappers for gravity estimation,
+but the idea was to be explicit about the steps involved in the replication
+process and using wrappers would have made the steps less clear.
+
+# Original codes and data
+
+We organized the original codes and data from the authors' site,
+[The Log of Gravity](https://personal.lse.ac.uk/tenreyro/lgw.html), on
+[GitHub](https://github.com/pachadotdev/log-of-gravity) and therefore ease
+replication in the event that the links change in the future.
+
+We obtained the original data and code with the following R code:
 
 ```{r download}
 url <- "https://personal.lse.ac.uk/tenreyro/regressors.zip"
@@ -56,29 +89,33 @@ dout <- "regressors"
 if (!dir.exists(dout)) unzip(zip, exdir = dout)
 ```
 
-# R packages
+The original dataset obtained in the previous step is available in Stata
+format, a closed source format that we can read in R thanks to the haven package
+[@wickham2021haven] without loss of information or other common problems when
+reading proprietary formats.
 
-```{r pkgs}
+We proceeded to import R packages to ease our work and read the data with the
+following R code:
+
+```{r import}
 library(haven) # read Stata datasets
 library(censReg) # Tobit estimation
 library(stargazer) # table of results
-```
 
-# Loading the original data
-
-Thanks to the haven package [@wickham2021haven] we can read Stata datasets 
-directly in R without loss of information about column types and other common 
-problems when reading proprietary formats.
-
-```{r import}
 log_of_gravity <- read_dta(paste0(dout, "/Log of Gravity.dta"))
 ```
 
-# Poisson Pseudo Maximum Likelihood
+# Models replication
 
-Table 3 in @silva2006log summarises a large portion of the article. In R we 
-would replicate it by fitting two Generalized Linear Models since the article
-introduces estimates with and without removing zero flows.
+## Poisson Pseudo Maximum Likelihood
+
+Table 3 in @silva2006log summarises a large portion of the article. Starting
+from the Poisson Pseudo Maximum Likelihood (PPML) estimation, we can replicate
+the results with the Generalized Linear Model (GLM) and a quasi-Poisson link in
+R. The original article estimates the model with and without zero flows.
+
+We could replicate the PPML model results with and without zero flows with the
+following R code:
 
 ```{r replication}
 ppml_formula <- trade ~ lypex + lypim + lyex + lyim + ldist + border +
@@ -99,22 +136,24 @@ fit_ppml_2 <- glm(
 )
 ```
 
-The replication effort here is null, it just sufficed to look at the summary
-table in the article and subset the data to drop zero flows. Therefore, it
-makes sense to proceed with the other models.
+The replication effort for the PPML model was minimal, it was sufficient to look
+at the summary table in the article and subset the data to drop zero flows. This
+step did not require to guess data cleaning steps or transformations not
+mentioned in the article.
 
-# Ordinary Least Squares
+## Ordinary Least Squares
 
-The only consideration here is to drop zero flows for some of the models with 
-log in the dependent variable even when Table 3 is not explicit about this, 
-otherwise we break the fitting algorithm.
+The only consideration for the OLS model was to drop zero flows for some of the
+models with log in the dependent variable even when Table 3 is not explicit
+about this, otherwise we break the fitting algorithm (e.g. because
+$\log(0) \to -\infty$).
 
-For example, for estimations of the type 
+For estimations of the form
 $\log(\text{trade}) = \beta_0 + \beta_1 \text{lypex} + \dots + \varepsilon,$
-we need to drop zero flows to replicate the result. On the other hand, 
+we needed to drop zero flows to replicate the result. On the other hand, 
 for estimations of the type 
 $\log(1 + \text{trade}) = \beta_0 + \beta_1 \text{lypex} + \dots + \varepsilon,$
-we don't need to drop zero flows.
+we did not need to drop zero flows.
 
 ```{r replication2}
 fit_ols_1 <- lm(
@@ -129,16 +168,16 @@ fit_ols_2 <- lm(
 )
 ```
 
-# Tobit
+## Tobit
 
-The Tobit estimation is similar but requires the use of the censReg package
-[@henningsen2020censreg]. The complicated part of the estimation is to 
+The Tobit estimation required the use of the censReg package
+[@henningsen2020censreg]. Unlike PPML and OLS models, this required us to
 extract the right hand side of the model formula to define a vector of zeroes 
-with a length equal to the right hand side plus two as starting point for the 
-Maximum Likelihood estimation (e.g., including the depending variable and 
+with a length equal to the independent variables plus two as starting point for
+the Maximum Likelihood estimation (e.g., counting the depending variable and 
 intercept besides the estimating slopes).
 
-In order to obtain the $a$ value that matches the results in the article I
+In order to obtain the $a$ parameter that matches the results in the article we
 proceeded with an iteration loop until achieving convergence with respect to
 one of the estimated slopes. The initial value of $a=200$ was arbitrary and
 set after trying reasonable guesses that converge to the slopes in the original
@@ -174,11 +213,10 @@ while (abs(lypex_estimate - lypex_ref) > tol) {
 }
 ```
 
-# Non-Linear Least Squares
+## Non-Linear Least Squares
 
-For this type of estimation the starting values are retrieved from the results 
-of the PPML model with zero flows and then we pass these values to a Generalized 
-Linear Model using the Gaussian distribution and a log-link.
+The starting values were retrieved from the PPML model results with zero flows
+and then passed to the GLM function with a Gaussian log-link in R.
 
 ```{r replication4}
 fit_ppml_eta <- fit_ppml_2$linear.predictors
@@ -196,13 +234,14 @@ fit_nls <- glm(
 )
 ```
 
-# Putting it all together
+# Replication results
 
-There wasn't much effort involved in the replication, which is something
-desirable. I didn't even have to email the authors with questions whereas
-the data was filtered or transformed in ways not mentioned in the article, 
-which is something that we often see. The article is very close to full
-replication according to the criteria from @peng2011reproducible.
+@silva2006log is very close to full replication according to the criteria
+defined in @peng2011reproducible. The replication results are consistent with
+the original article and reveal equivalent figures for all the models estimated
+in the original article.
+
+The results are presented in the following table:
 
 ```{r replication5, results='asis'}
 stargazer(
@@ -217,6 +256,16 @@ stargazer(
 ```
 
 \newpage
+
+# Conclusion
+
+The replication effort was minimal, without the need to contact the authors for
+clarifications or incur into data transformations or filtering not mentioned in
+the article. The results are consistent with the original article and reveal
+proper and transparent scholarship. Ideally, all disciplines that rely on
+quantitative research and the use of statistical methods to test hypotheses
+should follow similar or higher standards of transparency, but that is not
+always the case as initiatives such as @simonsohn_data_2024 reveal.
 
 # Acknowledgements
 

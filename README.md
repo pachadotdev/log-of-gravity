@@ -10,12 +10,12 @@ commit of this repository I mentioned that it was done in Stata.
 The idea here is to be explicit regarding the conceptual approach to regression in R. For most of the replication I used base R without external libraries (i.e packages) except when it was absolutely necessary. 
 Much of the methods exposed here lead to the exact same results as using the gravity package which provides convenient wrappers for gravity estimation.
 
-All questions are welcome to the address mv.sepulveda@mail.utoronto.ca.
+All questions are welcome to the address m.sepulveda@mail.utoronto.ca.
 
 These notes were written with 
 [varsityblues](https://github.com/pachadotdev/varsityblues).
 
 ## References
 
-Silva, JMC Santos, and Silvana Tenreyro. “The Log of Gravity.” The Review of Economics
+Santos Silva, Joao, and Silvana Tenreyro. “The Log of Gravity.” The Review of Economics
 and Statistics 88, no. 4 (2006): 641–58.
